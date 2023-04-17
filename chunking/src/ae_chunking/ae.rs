@@ -24,7 +24,7 @@ impl Chunker for ChunkerAE {
                 max_position = i;
             } else {
                 if i == max_position + self.window_size {
-                    return i;
+                    return i + 1;
                 }
             }
         }
