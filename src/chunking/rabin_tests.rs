@@ -1,4 +1,4 @@
-use super::super::chunker::Chunker;
+use super::chunker::Chunker;
 use super::rabin::ChunkerRabin;
 
 const seed: u32 = 0;

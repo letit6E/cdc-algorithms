@@ -1,5 +1,5 @@
-use super::super::chunker::Chunker;
 use super::ae::ChunkerAE;
+use super::chunker::Chunker;
 
 #[test]
 fn test_random_data() {

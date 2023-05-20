@@ -1,4 +1,4 @@
-use super::super::chunker::Chunker;
+use super::chunker::Chunker;
 use std::collections::VecDeque;
 
 pub struct ChunkerRabin {

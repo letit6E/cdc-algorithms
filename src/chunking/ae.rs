@@ -1,4 +1,4 @@
-use super::super::chunker::Chunker;
+use super::chunker::Chunker;
 use std::f64::consts;
 
 pub struct ChunkerAE {
