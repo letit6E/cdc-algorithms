@@ -1,3 +1,3 @@
 mod ae;
-mod chunker;
+pub mod chunker;
 mod rabin;
