@@ -1,46 +1,69 @@
-use super::chunker::Chunker;
+use super::chunker::*;
 use std::f64::consts;
+use std::io::{Read, Write};
+use std::ptr;
 
-pub struct ChunkerAE {
+pub struct AeChunker {
+    buffer: [u8; 0x1000],
+    left: usize,
     window_size: usize,
 }
 
-impl ChunkerAE {
-    pub fn new(avg_size: usize) -> ChunkerAE {
-        ChunkerAE {
+impl AeChunker {
+    pub fn new(avg_size: usize) -> AeChunker {
+        AeChunker {
+            buffer: [0; 0x1000],
+            left: 0,
             window_size: ((avg_size as f64) / (consts::E - 1.)).round() as usize,
         }
     }
 }
 
-impl Chunker for ChunkerAE {
-    fn next_chunk(&mut self, data: &Vec<u8>, start: usize) -> usize {
-        let mut max_value = data[start];
-        let mut max_position = start;
+impl Chunker for AeChunker {
+    fn next_chunk(
+        &mut self,
+        r: &mut dyn Read,
+        w: &mut dyn Write,
+    ) -> Result<ChunkerStatus, ChunkerError> {
+        let mut global_pos: usize = 0;
+        let mut max_pos: usize = 0;
+        let mut max_val: u8 = 0;
+        loop {
+            let mut max = r
+                .read(&mut self.buffer[self.left..])
+                .map_err(ChunkerError::Read)?
+                + self.left;
 
-        for i in start + 1..data.len() {
-            if data[i] > max_value {
-                max_value = data[i];
-                max_position = i;
-            } else {
-                if i == max_position + self.window_size {
-                    return i + 1;
-                }
+            if max == 0 {
+                return Ok(ChunkerStatus::Finished);
             }
+
+            for i in 0..max {
+                let cur_val = self.buffer[i];
+
+                if cur_val > max_val {
+                    max_val = cur_val;
+                    max_pos = global_pos;
+                } else if global_pos == max_pos + self.window_size {
+                    w.write_all(&self.buffer[i + 1..])
+                        .map_err(ChunkerError::Write)?;
+                    unsafe {
+                        ptr::copy(
+                            self.buffer[i + 1..].as_ptr(),
+                            self.buffer.as_mut_ptr(),
+                            max - i - 1,
+                        )
+                    };
+                    self.left = max - i - 1;
+                    return Ok(ChunkerStatus::Working);
+                }
+
+                global_pos += 1;
+            }
+
+            w.write_all(&self.buffer[..max])
+                .map_err(ChunkerError::Write);
+            self.left = 0;
         }
-
-        data.len()
-    }
-
-    fn chunk(&mut self, data: &Vec<u8>) -> Vec<usize> {
-        let mut result: Vec<usize> = vec![];
-
-        let mut next = 0;
-        while next < data.len() {
-            next = self.next_chunk(data, next);
-            result.push(next);
-        }
-
-        result
     }
 }
