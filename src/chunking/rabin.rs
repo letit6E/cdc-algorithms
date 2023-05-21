@@ -30,7 +30,7 @@ impl HashRabin {
     }
 }
 
-pub struct ChunkerRabin {
+pub struct RabinChunker {
     buffer: [u8; 4096], // for buffered reading from input
     buffered: usize,    // count of first in buffer already taken bytes
     window_size: usize, // rabin fingerprint window size
@@ -39,14 +39,14 @@ pub struct ChunkerRabin {
     hash: HashRabin,    // struct for data of used Rabin hash parameters
 }
 
-impl ChunkerRabin {
-    pub fn new(avg_size: usize, seed: u32) -> ChunkerRabin {
+impl RabinChunker {
+    pub fn new(avg_size: usize, seed: u32) -> RabinChunker {
         let window_size = avg_size / 4 - 1;
         let min_size = avg_size / 4;
         let max_size = avg_size * 4;
         let alpha = 1_664_525;
 
-        ChunkerRabin {
+        RabinChunker {
             buffer: [0; 4096],
             buffered: 0,
             window_size,
@@ -57,7 +57,7 @@ impl ChunkerRabin {
     }
 }
 
-impl Chunker for ChunkerRabin {
+impl Chunker for RabinChunker {
     fn next_chunk(
         &mut self,
         input: &mut dyn Read,
