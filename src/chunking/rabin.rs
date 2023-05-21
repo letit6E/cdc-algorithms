@@ -60,15 +60,15 @@ impl ChunkerRabin {
 impl Chunker for ChunkerRabin {
     fn next_chunk(
         &mut self,
-        r: &mut dyn Read,
-        w: &mut dyn Write,
+        input: &mut dyn Read,
+        output: &mut dyn Write,
     ) -> Result<ChunkerStatus, ChunkerError> {
         let mut hash = 0u32;
         let mut window = VecDeque::with_capacity(self.window_size);
         loop {
             // [0, self.buffered - 1] is already taken bytes
             // max is end of data if it less than buffer size
-            let max = r
+            let max = input
                 .read(&mut self.buffer[self.buffered..])
                 .map_err(ChunkerError::Read)?
                 + self.buffered;
@@ -84,7 +84,8 @@ impl Chunker for ChunkerRabin {
                 // max size of chunk reached
                 if chunk_pos >= self.max_size {
                     // returning chunk to output stream
-                    w.write_all(&self.buffer[..chunk_pos + 1])
+                    output
+                        .write_all(&self.buffer[..chunk_pos + 1])
                         .map_err(ChunkerError::Write)?;
                     // moving data to beginning of buffer(size of this data is equal to max-chunk_pos-1)
                     unsafe {
@@ -108,7 +109,8 @@ impl Chunker for ChunkerRabin {
                     // if rabin fingerprint correct then chunk finded
                     if chunk_pos >= self.min_size && ((hash ^ self.hash.seed) & self.hash.mask) == 0
                     {
-                        w.write_all(&self.buffer[..chunk_pos + 1])
+                        output
+                            .write_all(&self.buffer[..chunk_pos + 1])
                             .map_err(ChunkerError::Write)?;
                         unsafe {
                             ptr::copy(
@@ -125,7 +127,8 @@ impl Chunker for ChunkerRabin {
             }
 
             // end of input reached
-            w.write_all(&self.buffer[..max])
+            output
+                .write_all(&self.buffer[..max])
                 .map_err(ChunkerError::Write)?;
             self.buffered = 0;
         }
