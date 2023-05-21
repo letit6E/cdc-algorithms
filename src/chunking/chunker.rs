@@ -23,7 +23,7 @@ quick_error! {
 pub trait Chunker {
     fn next_chunk(
         &mut self,
-        r: &mut dyn Read,
-        w: &mut dyn Write,
+        input: &mut dyn Read,
+        output: &mut dyn Write,
     ) -> Result<ChunkerStatus, ChunkerError>;
 }
