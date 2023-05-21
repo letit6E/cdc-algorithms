@@ -6,7 +6,7 @@ use std::ptr;
 // "AE: An Asymmetric Extremum Content Defined Chunking Algorithm for Fast and Bandwidth-Efficient Data Deduplication"
 pub struct AeChunker {
     buffer: [u8; 4096], // for buffered reading from input(4096 is max size of chunk)
-    buffered: usize,    // count of first already taken bytes
+    buffered: usize,    // count of first in buffer already taken bytes
     window_size: usize, // size for extremum window
 }
 
@@ -26,8 +26,9 @@ impl Chunker for AeChunker {
         input: &mut dyn Read,
         output: &mut dyn Write,
     ) -> Result<ChunkerStatus, ChunkerError> {
-        let mut max_pos: usize = 0;
-        let mut max_val: u8 = 0;
+        let mut local_pos = 0;
+        let mut max_pos = 0;
+        let mut max_val = 0;
         loop {
             // [0, self.buffered - 1] is already taken bytes
             // max is end of data if it less than buffer size
@@ -36,37 +37,38 @@ impl Chunker for AeChunker {
                 .map_err(ChunkerError::Read)?
                 + self.buffered;
 
-            // if end of data is equal to 0 then there is no data
+            // if max == 0 then end of input reached
             if max == 0 {
                 return Ok(ChunkerStatus::Finished);
             }
 
-            for chunk_pos in 0..max {
-                let cur_val = self.buffer[chunk_pos];
-
+            for i in 0..max {
+                let cur_val = self.buffer[i];
                 if cur_val > max_val {
                     max_val = cur_val;
-                    max_pos = chunk_pos;
-                } else if chunk_pos == max_pos + self.window_size {
-                    // returning chunk to output stream
+                    max_pos = local_pos;
+                } else if local_pos == max_pos + self.window_size {
+                    // finded new chunk, write it
                     output
-                        .write_all(&self.buffer[chunk_pos + 1..])
+                        .write_all(&self.buffer[..i + 1])
                         .map_err(ChunkerError::Write)?;
-                    // moving data to beginning of buffer(size of this data is equal to max-chunk_pos-1)
+
+                    // move unprocessed data to the beginning of buffer
                     unsafe {
                         ptr::copy(
-                            self.buffer[chunk_pos + 1..].as_ptr(),
+                            self.buffer[i + 1..].as_ptr(),
                             self.buffer.as_mut_ptr(),
-                            max - chunk_pos - 1,
+                            max - i - 1,
                         )
                     };
-                    self.buffered = max - chunk_pos - 1;
+                    self.buffered = max - i - 1;
 
                     return Ok(ChunkerStatus::Working);
                 }
+                local_pos += 1;
             }
 
-            // max size of chunk or end of input reached
+            // end of buffer or end of input reached
             output
                 .write_all(&self.buffer[..max])
                 .map_err(ChunkerError::Write)?;
