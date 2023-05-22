@@ -1,5 +1,6 @@
 use quick_error::quick_error;
 use std::io::{self, Read, Write};
+#[derive(PartialEq)]
 pub enum ChunkerStatus {
     Working,
     Finished,
