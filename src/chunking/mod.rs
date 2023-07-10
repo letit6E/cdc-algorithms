@@ -1,5 +1,5 @@
-mod ae;
+pub mod ae;
 pub mod chunker;
-mod fastcdc;
-mod fixed;
-mod rabin;
+pub mod fastcdc;
+pub mod fixed;
+pub mod rabin;

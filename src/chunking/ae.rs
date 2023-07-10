@@ -11,11 +11,12 @@ pub struct AeChunker {
 }
 
 impl AeChunker {
-    pub fn new(avg_size: usize) -> AeChunker {
+    pub fn new(expected_size: usize) -> AeChunker {
         AeChunker {
             buffer: [0; 4096],
             buffered: 0,
-            window_size: ((avg_size as f64) / (consts::E - 1.)).round() as usize, // from paper
+            window_size: expected_size - 256,
+            // window_size: ((expected_size as f64) / (consts::E - 1.)).round() as usize, // from paper
         }
     }
 }

@@ -8,10 +8,10 @@ pub struct FixedChunker {
 }
 
 impl FixedChunker {
-    pub fn new(avg_size: usize) -> FixedChunker {
+    pub fn new(expected_size: usize) -> FixedChunker {
         FixedChunker {
             buffer: [0; 4096],
-            chunk_size: avg_size,
+            chunk_size: expected_size,
         }
     }
 }

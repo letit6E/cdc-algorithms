@@ -40,10 +40,10 @@ pub struct RabinChunker {
 }
 
 impl RabinChunker {
-    pub fn new(avg_size: usize, seed: u32) -> RabinChunker {
-        let window_size = avg_size / 4 - 1;
-        let min_size = avg_size / 4;
-        let max_size = avg_size * 4;
+    pub fn new(expected_size: usize, seed: u32) -> RabinChunker {
+        let window_size = expected_size / 4 - 1;
+        let min_size = expected_size / 4;
+        let max_size = expected_size * 4;
         let alpha = 1_664_525;
 
         RabinChunker {
@@ -52,7 +52,7 @@ impl RabinChunker {
             window_size,
             min_size,
             max_size,
-            hash: HashRabin::new(avg_size, window_size, alpha, seed),
+            hash: HashRabin::new(expected_size, window_size, alpha, seed),
         }
     }
 }

@@ -20,8 +20,8 @@ fn generate_seq(seed: u64) -> [u64; 256] {
     result
 }
 
-fn generate_masks(avg_size: usize, noice: usize, seed: u64) -> (u64, u64) {
-    let bits_count = (avg_size.next_power_of_two() - 1).count_ones();
+fn generate_masks(expected_size: usize, noice: usize, seed: u64) -> (u64, u64) {
+    let bits_count = (expected_size.next_power_of_two() - 1).count_ones();
     if bits_count == 13 {
         // From paper
         return (0x0003590703530000, 0x0000d90003530000);
@@ -53,21 +53,21 @@ pub struct FastCdcChunker {
     gear: [u64; 256],
     min_size: usize,
     max_size: usize,
-    avg_size: usize,
+    expected_size: usize,
     long_mask: u64,
     short_mask: u64,
 }
 
 impl FastCdcChunker {
-    pub fn new(avg_size: usize, seed: u64) -> Self {
-        let (mask_short, mask_long) = generate_masks(avg_size, 2, seed);
+    pub fn new(expected_size: usize, seed: u64) -> Self {
+        let (mask_short, mask_long) = generate_masks(expected_size, 1, seed);
         FastCdcChunker {
             buffer: [0; 4096],
             buffered: 0,
             gear: generate_seq(seed),
-            min_size: avg_size / 4,
-            max_size: avg_size * 8,
-            avg_size: avg_size,
+            min_size: expected_size / 4,
+            max_size: expected_size * 8,
+            expected_size: expected_size,
             long_mask: mask_long,
             short_mask: mask_short,
         }
@@ -100,8 +100,8 @@ impl Chunker for FastCdcChunker {
                     hash = (hash << 1).wrapping_add(self.gear[self.buffer[i] as usize]);
 
                     // 3 cases for new chunk:
-                    if local_pos < self.avg_size && (hash & self.short_mask == 0)
-                        || local_pos >= self.avg_size && (hash & self.long_mask == 0)
+                    if local_pos < self.expected_size && (hash & self.short_mask == 0)
+                        || local_pos >= self.expected_size && (hash & self.long_mask == 0)
                         || local_pos >= self.max_size
                     {
                         // finded new chunk, write it
