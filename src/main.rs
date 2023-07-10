@@ -1,7 +1,6 @@
 mod chunking;
 use chunking::{ae::*, chunker::*, fastcdc::*, rabin::*};
 use fastcdc::v2020::Chunk;
-extern crate num_cpus;
 
 use std::fs::File;
 use std::io::{BufReader, Read};
