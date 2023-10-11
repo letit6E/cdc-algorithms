@@ -1,7 +1,15 @@
+use rayon::prelude::{IntoParallelIterator, ParallelIterator};
+
 use super::chunker::*;
+use std::cmp::max;
+use std::collections::HashSet;
+use std::collections::hash_map::DefaultHasher;
 use std::f64::consts;
-use std::io::{Read, Write};
+use std::fs::File;
+use std::hash::{Hash, Hasher};
+use std::io::{Read, Write, Error};
 use std::ptr;
+use std::time::{Instant, Duration};
 
 // "AE: An Asymmetric Extremum Content Defined Chunking Algorithm for Fast and Bandwidth-Efficient Data Deduplication"
 pub struct AeChunker {
@@ -18,6 +26,77 @@ impl AeChunker {
             window_size: expected_size - 256,
             // window_size: ((expected_size as f64) / (consts::E - 1.)).round() as usize, // from paper
         }
+    }
+
+    fn get_bounds_ae(vec: &Vec<u8>, window_size: usize, left: usize, right: usize) -> Vec<usize> {
+        let mut result = Vec::new();
+        let start = max(0i64, (left as i64) - (window_size as i64)) as usize;
+        let mut max_val = vec[start];
+        let mut max_pos = start;
+        for i in start..right {
+            if vec[i] > max_val {
+                max_val = vec[i];
+                max_pos = i;
+            } else if i == max_pos + window_size {
+                result.push(i);
+                if i + 1 != right {
+                    max_val = vec[i + 1];
+                    max_pos = i + 1;
+                }
+            }
+        }
+    
+        if right == vec.len() {
+            result.push(vec.len() - 1);
+        }
+        result
+    }
+
+    fn read_file(path: &str) -> Result<Vec<u8>, Error> {
+        let mut f = File::open(path)?;
+        let mut buffer = Vec::new();
+        f.read_to_end(&mut buffer)?;
+    
+        Ok(buffer)
+    }
+    
+    pub fn parallel_chunking(&self, path: &str, threads_cnt: usize) -> (Duration, f64, f64) {
+        let vec = AeChunker::read_file(path).unwrap();
+    
+        let now = Instant::now();
+        let tmp: Vec<Vec<usize>> = (1..threads_cnt + 1)
+                .into_par_iter()
+                .map(|i| {
+                    let left = (i - 1) * vec.len() / threads_cnt;
+                    let right = i * vec.len() / threads_cnt;
+                    AeChunker::get_bounds_ae(&vec, self.window_size, left, right)
+                })
+                .collect();
+    
+        let mut last: i64 = -1;
+        let mut set = HashSet::new();
+        let mut local_sm = 0;
+        let mut sm = 0;
+        for j in 0..threads_cnt {
+            for &elem in &tmp[j] {
+                if (elem as i64) - last >= (self.window_size as i64) {
+                    let next = &vec[((last + 1) as usize)..elem + 1];
+                    let mut hasher = DefaultHasher::new();
+                    next.hash(&mut hasher);
+                    let hsh = hasher.finish();
+    
+                    if !set.contains(&hsh) {
+                        set.insert(hsh);
+                        local_sm += (elem as i64) - last;
+                    }
+                    sm += (elem as i64) - last;
+                    last = elem as i64;
+                }
+            }
+        }
+        
+        let elapsed = now.elapsed();
+        (elapsed, (local_sm as f64) / (vec.len() as f64), (sm as f64) / (set.len() as f64))
     }
 }
 
@@ -76,4 +155,6 @@ impl Chunker for AeChunker {
             self.buffered = 0;
         }
     }
+
+    
 }
