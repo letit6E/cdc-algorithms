@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 quick-error = "2.0.1"
 fastcdc = "3.0.3"
+rayon = "1.8.0"
