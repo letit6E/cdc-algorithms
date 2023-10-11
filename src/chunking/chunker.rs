@@ -1,5 +1,5 @@
 use quick_error::quick_error;
-use std::io::{self, Read, Write};
+use std::{io::{self, Read, Write, Error}, fs::File};
 #[derive(PartialEq)]
 pub enum ChunkerStatus {
     Working,
@@ -27,4 +27,12 @@ pub trait Chunker {
         input: &mut dyn Read,
         output: &mut dyn Write,
     ) -> Result<ChunkerStatus, ChunkerError>;
+
+    fn read_file(&self, path: &str) -> Result<Vec<u8>, Error> {
+        let mut f = File::open(path)?;
+        let mut buffer = Vec::new();
+        f.read_to_end(&mut buffer)?;
+    
+        Ok(buffer)
+    }
 }

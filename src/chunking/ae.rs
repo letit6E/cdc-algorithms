@@ -28,16 +28,16 @@ impl AeChunker {
         }
     }
 
-    fn get_bounds_ae(vec: &Vec<u8>, window_size: usize, left: usize, right: usize) -> Vec<usize> {
+    fn get_bounds(&self, vec: &Vec<u8>, left: usize, right: usize) -> Vec<usize> {
         let mut result = Vec::new();
-        let start = max(0i64, (left as i64) - (window_size as i64)) as usize;
+        let start = max(0i64, (left as i64) - (self.window_size as i64)) as usize;
         let mut max_val = vec[start];
         let mut max_pos = start;
         for i in start..right {
             if vec[i] > max_val {
                 max_val = vec[i];
                 max_pos = i;
-            } else if i == max_pos + window_size {
+            } else if i == max_pos + self.window_size {
                 result.push(i);
                 if i + 1 != right {
                     max_val = vec[i + 1];
@@ -51,17 +51,9 @@ impl AeChunker {
         }
         result
     }
-
-    fn read_file(path: &str) -> Result<Vec<u8>, Error> {
-        let mut f = File::open(path)?;
-        let mut buffer = Vec::new();
-        f.read_to_end(&mut buffer)?;
-    
-        Ok(buffer)
-    }
     
     pub fn parallel_chunking(&self, path: &str, threads_cnt: usize) -> (Duration, f64, f64) {
-        let vec = AeChunker::read_file(path).unwrap();
+        let vec = Chunker::read_file(self, path).unwrap();
     
         let now = Instant::now();
         let tmp: Vec<Vec<usize>> = (1..threads_cnt + 1)
@@ -69,7 +61,7 @@ impl AeChunker {
                 .map(|i| {
                     let left = (i - 1) * vec.len() / threads_cnt;
                     let right = i * vec.len() / threads_cnt;
-                    AeChunker::get_bounds_ae(&vec, self.window_size, left, right)
+                    self.get_bounds(&vec,  left, right)
                 })
                 .collect();
     
